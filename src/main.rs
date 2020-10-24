@@ -31,7 +31,7 @@ fn compress(file: &[u8], out_path: &Path) -> std::io::Result<()> {
 
 	deflate::deflate(file, &mut out_file);
 
-	let crc32 = crc32::crc32(&file);
+	let crc32 = crc32::crc32(file);
 	out_file.write_all(&crc32.to_le_bytes())?; // CRC32
 	let size: u32 = file.len() as u32 & 0xFFFFFFFF;
 	out_file.write_all(&size.to_le_bytes())?; // size modulo 2^32
