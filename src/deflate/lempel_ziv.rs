@@ -71,7 +71,7 @@ impl RepsTracker<'_> {
 		let max_len = |start: usize| -> u32 {
 			// how many bytes of the sequence starting at start agree with the one at pos?
 			let mut res: usize = 0;
-			while res <= MAX_REP_LEN &&
+			while res < MAX_REP_LEN &&
 			self.data[start + res] == self.data[self.pos + res] {
 				res += 1;
 			}
