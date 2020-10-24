@@ -1,6 +1,6 @@
 use std::path::Path;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{Read, Write, BufWriter};
 
 mod crc32;
 mod huffman;
@@ -19,7 +19,7 @@ fn main() -> std::io::Result<()> {
 }
 
 fn compress(file: &[u8], out_path: &Path) -> std::io::Result<()> {
-	let mut out_file = File::create(out_path)?;
+	let mut out_file = BufWriter::with_capacity(1 << 20, File::create(out_path)?);
 	
 	// gzip header
 	out_file.write_all(&[0x1F, 0x8B])?; // magic
@@ -29,7 +29,7 @@ fn compress(file: &[u8], out_path: &Path) -> std::io::Result<()> {
 	out_file.write_all(&[0x00])?; // Extra Flags - None
 	out_file.write_all(&[0xFF])?; // OS - unknown
 
-	deflate::deflate(file, &mut out_file)?;
+	deflate::deflate(file, &mut out_file);
 
 	let crc32 = crc32::crc32(&file);
 	out_file.write_all(&crc32.to_le_bytes())?; // CRC32

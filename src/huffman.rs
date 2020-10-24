@@ -1,22 +1,21 @@
 #[derive(Copy, Clone)]
 pub struct HuffmanCode {
 	pub code: u32,
-	pub length: u32,
+	pub length: u8,
 }
 
 pub type Tree = Vec<HuffmanCode>;
 
 // deflate, Compression with fixed Huffman codes:
-pub const FIXED_CODES: [u32; 288] = [
+pub const FIXED_CODES: [u8; 288] = [
 8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,8,
 9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,
 7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,7,
 8,8,8,8,8,8,8,8
 ];
 
-pub fn calc_codes(lengths: &[u32]) -> Tree {
+pub fn calc_codes(lengths: &[u8]) -> Tree {
 	// codes generated are meant to be read LSB to MSB
-	assert_eq!(lengths.len(), 288, "the deflate format has 288 symbols.");
 
 	let mut bl_count: [u32; 16] = [0; 16]; // 15 is max bit length
 	for bl in lengths {
