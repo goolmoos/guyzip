@@ -1,6 +1,6 @@
 use std::path::Path;
-use std::fs::File;
-use std::io::{Read, Write, BufWriter};
+use std::fs::{self, File};
+use std::io::{Write, BufWriter};
 
 mod crc32;
 mod huffman;
@@ -13,7 +13,7 @@ fn main() -> std::io::Result<()> {
 	let out_file_name = format!("{}.gz", in_path.file_name().unwrap().to_str().unwrap());
 	let out_path = Path::new(&out_file_name);
 
-	let file: Vec<u8> = File::open(in_path)?.bytes().map(|x| x.unwrap()).collect();
+	let file: Vec<u8> = fs::read(in_path)?;
 	compress(&file, out_path)?;
 	Ok(())
 }
