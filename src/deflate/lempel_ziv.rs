@@ -6,15 +6,14 @@ const MAX_REP_LEN: usize = 258; // max len supported by the deflate format
 const MAX_REP_DIST: usize = 32768; // max dist supported by the deflate format
 
 pub fn lempel_ziv(data: &[u8]) -> Vec<Token> {
-	// data.iter().map(|x| Token::Literal(*x as u32)).collect()
 	let mut reps_tracker = RepsTracker::new(data);
 	let mut out = vec![];
 	while reps_tracker.pos < data.len() {
 		let reps = reps_tracker.get_reps();
-		let best_rep = reps.last(); // longest one
+		let best_rep = reps.last();
 		match best_rep {
-			Some((start, length)) => {
-				out.push(Token::Repeat(*length, (reps_tracker.pos - start) as u32));
+			Some((pos, length)) => {
+				out.push(Token::Repeat(*length, (reps_tracker.pos - pos) as u32));
 				for _ in 0..*length {
 					reps_tracker.advance();
 				}
@@ -32,7 +31,7 @@ struct RepsTracker<'a> {
 	data: &'a [u8],
 	pos: usize, // current position in the data
 	reps: HashMap<&'a [u8], VecDeque<usize>>, // maps [u8; 3] to their positions, closest in front, too far are discarded.
-	to_forget: VecDeque<&'a	[u8]>, // remember who was were so you could discard far ones. newest in front.
+	to_forget: VecDeque<&'a	[u8]>, // remember who was where so you could discard far ones. newest in front.
 }
 
 impl RepsTracker<'_> {

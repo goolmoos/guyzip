@@ -7,21 +7,32 @@ pub enum Block<'a> {
 }
 
 pub fn block_split(tokens: &[Token]) -> Vec<Block> {
-	let mut counter = FreqCounter::new();
-	for t in tokens {
-		counter.count(t);
-	}
+	const BLOCK_SIZE: usize = 8192;
+
+	let mut blocks = vec![];
 
 	let mut literal_code_lens = [0; 286];
-	huffman::gen_lengths(&counter.literal_count, 15, &mut literal_code_lens);
 	let mut distance_code_lens = [0; 30];
-	huffman::gen_lengths(&counter.distance_count, 15, &mut distance_code_lens);
 
-	vec![Block::DynamicCodes {
-		tokens,
-		literal_code_lens,
-		distance_code_lens,
-	}]
+	for i in (0..tokens.len()).step_by(BLOCK_SIZE) {
+		let start = i;
+		let end = if i + BLOCK_SIZE < tokens.len() {i + BLOCK_SIZE} else {tokens.len()};
+		let tokens = &tokens[start..end];
+
+		let mut counter = FreqCounter::new();
+		for t in tokens {
+			counter.count(t);
+		}
+		huffman::gen_lengths(&counter.literal_count, 15, &mut literal_code_lens);
+		huffman::gen_lengths(&counter.distance_count, 15, &mut distance_code_lens);
+		blocks.push(Block::DynamicCodes {
+			tokens,
+			literal_code_lens,
+			distance_code_lens,
+		});
+	}
+
+	blocks
 }
 
 struct FreqCounter {
