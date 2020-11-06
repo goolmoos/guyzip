@@ -12,27 +12,10 @@ pub fn block_split(tokens: &[Token]) -> Vec<Block> {
 		counter.count(t);
 	}
 
-	/*let mut test_code_lens = [0; 5];
-	let test_count = [0, 1, 1, 0, 5];
-	huffman::gen_lengths(&test_count, 2, &mut test_code_lens);
-	for i in 0..5 {
-		println!("{}: {}-{}", i, test_code_lens[i], test_count[i]);
-	}
-	panic!();*/
-
 	let mut literal_code_lens = [0; 286];
 	huffman::gen_lengths(&counter.literal_count, 15, &mut literal_code_lens);
 	let mut distance_code_lens = [0; 30];
 	huffman::gen_lengths(&counter.distance_count, 15, &mut distance_code_lens);
-
-	/*for i in 0..286 {
-		println!("{}: {}-{}", i, literal_code_lens[i], counter.literal_count[i]);
-	}
-	for i in 0..30 {
-		println!("{}: {}-{}", i, distance_code_lens[i], counter.distance_count[i]);
-	}
-	println!("sums: {} {}", counter.literal_count.iter().sum::<u64>(), counter.distance_count.iter().sum::<u64>());
-	panic!();*/
 
 	vec![Block::DynamicCodes {
 		tokens,
