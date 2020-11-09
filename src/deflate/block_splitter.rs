@@ -1,4 +1,4 @@
-use super::{Token, LEN_TO_CODE, DIST_TO_CODE};
+use super::{Token, deflate_code_of_len, deflate_code_of_dist};
 use crate::huffman;
 
 pub enum Block<'a> {
@@ -54,19 +54,11 @@ impl FreqCounter {
 		match token {
 			Token::Literal(value) => self.literal_count[*value as usize] += 1,
 			Token::Repeat(len, dist) => {
-				for (_len_start, len_end, _extra_bits, code) in &LEN_TO_CODE {
-					if len < len_end {
-						self.literal_count[*code as usize] += 1;
-						break;
-					}
-				}
-				for (_dist_start, dist_end, _extra_bits, code) in &DIST_TO_CODE {
-					if dist < dist_end {
-						self.distance_count[*code as usize] += 1;
-						break;
-					}
-				}
+				let (_offset, _extra_bits, code) = deflate_code_of_len(*len);
+				self.literal_count[code as usize] += 1;
+				let (_offset, _extra_bits, code) = deflate_code_of_dist(*dist);
+				self.distance_count[code as usize] += 1;
 			}
-		};
+		}
 	}
 }
