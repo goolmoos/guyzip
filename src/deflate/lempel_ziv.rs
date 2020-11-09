@@ -47,10 +47,6 @@ impl Encoder<'_> {
 		self.reps_tracker.advance();
 
 		while self.reps_tracker.pos < self.data.len() {
-			if self.reps_tracker.pos % 1024 == 0 {
-				let taken: u32 = self.possible_encodings.iter().map(|x| match x {None => 0, Some(_) => 1,}).sum();
-				println!("progress: {}, taken: {}", self.reps_tracker.pos, taken);
-			}
 			let i = self.reps_tracker.pos % MAX_REP_LEN;
 			let (curr_encoding, curr_size) = self.possible_encodings[i].take().unwrap();
 			let curr_encoding = Rc::new(curr_encoding);
