@@ -107,24 +107,79 @@ impl<'a, T: Write> DeflateWriter<'a, T> {
 		self.write_bits(if is_final {1} else {0}, 1);
 		self.write_bits(0, 1);
 		self.write_bits(1, 1);
+
 		// encode tree
+		const CODE_LEN_OF_CODE_ORDER: [usize; 19] = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
+
+		let mut rle_of_code_lens: Vec<[u8; 2]> = Vec::with_capacity(286 + 30); // vec of (val, length)
+		let code_lens_to_encode = literal_code_lens.iter().chain(distance_code_lens.iter());
+		for x in code_lens_to_encode {
+			// continue run if possible
+			let last_index = rle_of_code_lens.len() - 1;
+			if !rle_of_code_lens.is_empty() &&
+			rle_of_code_lens[last_index][0] == *x {
+				rle_of_code_lens[last_index][1] += 1;
+			} else {
+				// new run
+				rle_of_code_lens.push([*x, 1]);
+			}
+		}
+		let mut deflate_encode_of_rle = Vec::with_capacity(286 + 30); // vec of (code, extra bit count, extra bits value)
+		for val_len in rle_of_code_lens {
+			let val = val_len[0];
+			let mut len = val_len[1];
+			if val == 0 {
+				while len > 0 {
+					if len >= 11 {
+						eprintln!("mega 0");
+						let encoded_run = if len <= 138 {len} else {138};
+						deflate_encode_of_rle.push((18, 7, encoded_run - 11));
+						len -= encoded_run;
+					} else if len >= 3 {
+						eprintln!("medium 0");
+						deflate_encode_of_rle.push((17, 3, len - 3));
+						len = 0;
+					} else {
+						deflate_encode_of_rle.push((0, 0, 0));
+						len -= 1;
+					}
+				}
+			} else {
+				deflate_encode_of_rle.push((val, 0, 0));
+				len -= 1;
+				while len > 0 {
+					if len >= 3 {
+						eprintln!("small !0");
+						let encoded_run = if len <= 6 {len} else {6};
+						deflate_encode_of_rle.push((16, 2, encoded_run - 3));
+						len -= encoded_run;
+					} else {
+						deflate_encode_of_rle.push((val, 0, 0));
+						len -= 1;
+					}
+				}
+			}
+		}
+		let mut count_of_code_len_code: [u64; 19] = [0; 19]; // how many times each code len code is used
+		for (code, _, _) in &deflate_encode_of_rle {
+			count_of_code_len_code[*code as usize] += 1;
+		}
+		let mut code_len_of_code: [u8; 19] = [0; 19];
+		huffman::gen_lengths(&count_of_code_len_code, 7, &mut code_len_of_code);
+		let code_len_tree = huffman::calc_codes(&code_len_of_code);
+
 		self.write_bits(286 - 257, 5); // HLIT
 		self.write_bits(30 - 1, 5); // HDIST
 		self.write_bits(19 - 4, 4); // HCLEN
-		let code_len_of_code_order: [usize; 19] = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
-		let code_len_of_code: [u8; 19] = [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0];
-		let code_len_tree = huffman::calc_codes(&code_len_of_code);
 		for i in 0..19 { // code lengths for the code length alphabet
-			self.write_bits(code_len_of_code[code_len_of_code_order[i]] as u32, 3);
+			self.write_bits(code_len_of_code[CODE_LEN_OF_CODE_ORDER[i]] as u32, 3);
 		}
-		for i in 0..286 { // code lengths for the literal/length alphabet
-			let huffman_code = code_len_tree[literal_code_lens[i] as usize];
+		for (val, extra_bit_count, extra_bits_value) in deflate_encode_of_rle {
+			let huffman_code = code_len_tree[val as usize];
 			self.write_bits(huffman_code.code, huffman_code.length);
+			self.write_bits(extra_bits_value as u32, extra_bit_count);
 		}
-		for i in 0..30 { // code lengths for the distance alphabet
-			let huffman_code = code_len_tree[distance_code_lens[i] as usize];
-			self.write_bits(huffman_code.code, huffman_code.length);
-		}
+
 		self.literal_tree = huffman::calc_codes(literal_code_lens);
 		self.distance_tree = huffman::calc_codes(distance_code_lens);
 	}
