@@ -1,5 +1,6 @@
 use super::{Token, deflate_code_of_len, deflate_code_of_dist};
 use crate::huffman;
+use crate::deflate;
 
 pub enum Block<'a> {
 	FixedCodes { tokens: &'a[Token] },
@@ -11,28 +12,53 @@ pub fn block_split(tokens: &[Token]) -> Vec<Block> {
 
 	let mut blocks = vec![];
 
-	let mut literal_code_lens = [0; 286];
-	let mut distance_code_lens = [0; 30];
-
 	for i in (0..tokens.len()).step_by(BLOCK_SIZE) {
 		let start = i;
 		let end = if i + BLOCK_SIZE < tokens.len() {i + BLOCK_SIZE} else {tokens.len()};
 		let tokens = &tokens[start..end];
 
-		let mut counter = FreqCounter::new();
-		for t in tokens {
-			counter.count(t);
-		}
-		huffman::gen_lengths(&counter.literal_count, 15, &mut literal_code_lens);
-		huffman::gen_lengths(&counter.distance_count, 15, &mut distance_code_lens);
-		blocks.push(Block::DynamicCodes {
-			tokens,
-			literal_code_lens,
-			distance_code_lens,
-		});
+		blocks.push(build_block(tokens));
 	}
 
 	blocks
+}
+
+fn build_block(tokens: &[Token]) -> Block {
+	let mut counter = FreqCounter::new();
+	for t in tokens {
+		counter.count(t);
+	}
+	let mut literal_code_lens = [0; 286];
+	let mut distance_code_lens = [0; 30];
+	huffman::gen_lengths(&counter.literal_count, 15, &mut literal_code_lens);
+	huffman::gen_lengths(&counter.distance_count, 15, &mut distance_code_lens);
+
+	let mut dynamic_cost_header: u64 = 0;
+	let incrementor = |_bits: u32, len: u8| dynamic_cost_header += len as u64;
+	deflate::create_dynamic_block_header(&literal_code_lens, &distance_code_lens, incrementor);
+
+	let dynamic_cost_body = block_cost(&counter, &literal_code_lens, &distance_code_lens);
+	let fixed_cost_header = 3;
+	let fixed_cost_body = block_cost(&counter, &huffman::LITERAL_FIXED_CODES, &huffman::DISTANCE_FIXED_CODES);
+
+	if dynamic_cost_header + dynamic_cost_body < fixed_cost_header + fixed_cost_body {
+		Block::DynamicCodes {
+			tokens,
+			literal_code_lens,
+			distance_code_lens,
+		}
+	} else {
+		Block::FixedCodes {
+			tokens,
+		}
+	}
+}
+
+fn block_cost(counter: &FreqCounter, literal_code_lens: &[u8], distance_code_lens: &[u8]) -> u64 {
+	let mut total = 0;
+	total += counter.literal_count.iter().zip(literal_code_lens.iter()).map(|(a, b)| a * (*b as u64)).sum::<u64>();
+	total += counter.distance_count.iter().zip(distance_code_lens.iter()).map(|(a, b)| a * (*b as u64)).sum::<u64>();
+	total
 }
 
 struct FreqCounter {

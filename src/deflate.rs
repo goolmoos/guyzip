@@ -108,7 +108,18 @@ impl<'a, T: Write> DeflateWriter<'a, T> {
 		self.write_bits(0, 1);
 		self.write_bits(1, 1);
 
-		// encode tree
+		let bit_writer = |bits, len| self.write_bits(bits, len);
+		create_dynamic_block_header(&literal_code_lens, &distance_code_lens, bit_writer);
+
+		self.literal_tree = huffman::calc_codes(literal_code_lens);
+		self.distance_tree = huffman::calc_codes(distance_code_lens);
+	}
+}
+
+fn create_dynamic_block_header(literal_code_lens: &[u8], distance_code_lens: &[u8], mut write_bits: impl FnMut(u32, u8) -> ()) {
+		// create a header (only the tree encoding part) for a new dynamic block with the given code lens
+		// write using a given Fn to enable usage for size calculation.
+
 		const CODE_LEN_OF_CODE_ORDER: [usize; 19] = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
 
 		let mut rle_of_code_lens: Vec<[u8; 2]> = Vec::with_capacity(286 + 30); // vec of (val, length)
@@ -165,22 +176,18 @@ impl<'a, T: Write> DeflateWriter<'a, T> {
 		huffman::gen_lengths(&count_of_code_len_code, 7, &mut code_len_of_code);
 		let code_len_tree = huffman::calc_codes(&code_len_of_code);
 
-		self.write_bits(286 - 257, 5); // HLIT
-		self.write_bits(30 - 1, 5); // HDIST
-		self.write_bits(19 - 4, 4); // HCLEN
+		write_bits(286 - 257, 5); // HLIT
+		write_bits(30 - 1, 5); // HDIST
+		write_bits(19 - 4, 4); // HCLEN
 		for i in 0..19 { // code lengths for the code length alphabet
-			self.write_bits(code_len_of_code[CODE_LEN_OF_CODE_ORDER[i]] as u32, 3);
+			write_bits(code_len_of_code[CODE_LEN_OF_CODE_ORDER[i]] as u32, 3);
 		}
 		for (val, extra_bit_count, extra_bits_value) in deflate_encode_of_rle {
 			let huffman_code = code_len_tree[val as usize];
-			self.write_bits(huffman_code.code, huffman_code.length);
-			self.write_bits(extra_bits_value as u32, extra_bit_count);
+			write_bits(huffman_code.code, huffman_code.length);
+			write_bits(extra_bits_value as u32, extra_bit_count);
 		}
-
-		self.literal_tree = huffman::calc_codes(literal_code_lens);
-		self.distance_tree = huffman::calc_codes(distance_code_lens);
 	}
-}
 
 impl<'a, T: Write> Drop for DeflateWriter<'a, T> {
 	fn drop(&mut self) {
