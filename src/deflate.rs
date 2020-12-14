@@ -131,12 +131,10 @@ impl<'a, T: Write> DeflateWriter<'a, T> {
 			if val == 0 {
 				while len > 0 {
 					if len >= 11 {
-						eprintln!("mega 0");
 						let encoded_run = if len <= 138 {len} else {138};
 						deflate_encode_of_rle.push((18, 7, encoded_run - 11));
 						len -= encoded_run;
 					} else if len >= 3 {
-						eprintln!("medium 0");
 						deflate_encode_of_rle.push((17, 3, len - 3));
 						len = 0;
 					} else {
@@ -149,7 +147,6 @@ impl<'a, T: Write> DeflateWriter<'a, T> {
 				len -= 1;
 				while len > 0 {
 					if len >= 3 {
-						eprintln!("small !0");
 						let encoded_run = if len <= 6 {len} else {6};
 						deflate_encode_of_rle.push((16, 2, encoded_run - 3));
 						len -= encoded_run;
