@@ -161,11 +161,11 @@ impl RepsTracker<'_> {
 		// closer reps are first, only returns the closest one of each length
 		let max_len = |start: usize| -> u32 {
 			// how many bytes of the sequence starting at start agree with the one at pos?
-			let mut res: usize = 0;
-			while res < MAX_REP_LEN &&
-			start + res < self.data.len() &&
-			self.pos + res < self.data.len() &&
-			self.data[start + res] == self.data[self.pos + res] {
+			let mut res: usize = 3; // only called if 3 is already known
+			// bound check manually perfomed later. this is first because it is a lot more likely to return false
+			while unsafe { self.data.get_unchecked(start + res) == self.data.get_unchecked(self.pos + res) } &&
+			res < MAX_REP_LEN &&
+			self.pos + res < self.data.len() { // no need to check start + res since start < self.pos
 				res += 1;
 			}
 			res as u32

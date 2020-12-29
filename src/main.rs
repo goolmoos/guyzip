@@ -13,7 +13,8 @@ fn main() -> std::io::Result<()> {
 	let out_file_name = format!("{}.gz", in_path.file_name().unwrap().to_str().unwrap());
 	let out_path = Path::new(&out_file_name);
 
-	let file: Vec<u8> = fs::read(in_path)?;
+	let mut file: Vec<u8> = fs::read(in_path)?;
+	file.reserve(8); // make sure reading a word after the end won't segfault.
 	compress(&file, out_path)?;
 	Ok(())
 }
