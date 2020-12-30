@@ -1,5 +1,5 @@
 [package]
-name = "gziper"
+name = "guyzip"
 version = "0.1.0"
 authors = ["Guy Shefy <guyshefyb@gmail.com>"]
 edition = "2018"
