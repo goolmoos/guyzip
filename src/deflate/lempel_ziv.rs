@@ -188,6 +188,10 @@ impl RepsTracker<'_> {
 			// how many bytes of the sequence starting at start agree with the one at pos?
 			// if we are sure that the result < min_len_to_care then we can return 0
 
+			if unsafe { self.data.get_unchecked(start + min_len_to_care - 1) != self.data.get_unchecked(self.pos + min_len_to_care - 1) } {
+				// we definitely don't care. if this reads outside of data, then anyway a rep we care about can't exist.
+				return 0
+			}
 			// using hash to check if it is possible that we care
 			let hash1 = self.hash_recent_substring(start, start + min_len_to_care);
 			let hash2 = self.hash_recent_substring(self.pos, self.pos + min_len_to_care);
@@ -219,6 +223,9 @@ impl RepsTracker<'_> {
 			if l > longest {
 				out.push((self.pos - *start, l));
 				longest = l;
+			}
+			if longest == MAX_REP_LEN as u32 {
+				break;
 			}
 		}
 		out

@@ -14,7 +14,7 @@ fn main() -> std::io::Result<()> {
 	let out_path = Path::new(&out_file_name);
 
 	let mut file: Vec<u8> = fs::read(in_path)?;
-	file.reserve(8); // make sure reading a word after the end won't segfault.
+	file.reserve(1024); // make sure reading a little after the end won't segfault.
 	compress(&file, out_path)?;
 	Ok(())
 }
